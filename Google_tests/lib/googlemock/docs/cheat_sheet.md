@@ -1,12 +1,12 @@
-## gMock Cheat Sheet
+# gMock Cheat Sheet
 
 <!-- GOOGLETEST_CM0019 DO NOT DELETE -->
 
 <!-- GOOGLETEST_CM0033 DO NOT DELETE -->
 
-### Defining a Mock Class
+## Defining a Mock Class
 
-#### Mocking a Normal Class {#MockClass}
+### Mocking a Normal Class {#MockClass}
 
 Given
 
@@ -52,7 +52,7 @@ StrictMock<MockFoo> strict_foo;  // The type is a subclass of MockFoo.
 **Note:** A mock object is currently naggy by default. We may make it nice by
 default in the future.
 
-#### Mocking a Class Template {#MockTemplate}
+### Mocking a Class Template {#MockTemplate}
 
 Class templates can be mocked just like any class.
 
@@ -80,7 +80,7 @@ class MockStack : public StackInterface<Elem> {
 };
 ```
 
-#### Specifying Calling Conventions for Mock Functions
+### Specifying Calling Conventions for Mock Functions
 
 If your mock function doesn't use the default calling convention, you can
 specify it by adding `Calltype(convention)` to `MOCK_METHOD`'s 4th parameter.
@@ -94,7 +94,7 @@ For example,
 
 where `STDMETHODCALLTYPE` is defined by `<objbase.h>` on Windows.
 
-### Using Mocks in Tests {#UsingMocks}
+## Using Mocks in Tests {#UsingMocks}
 
 The typical work flow is:
 
@@ -130,7 +130,7 @@ TEST(BarTest, DoesThis) {
 }                                                 // #6
 ```
 
-### Setting Default Actions {#OnCall}
+## Setting Default Actions {#OnCall}
 
 gMock has a **built-in default action** for any function that returns `void`,
 `bool`, a numeric value, or a pointer. In C++11, it will additionally returns
@@ -186,7 +186,7 @@ ON_CALL(mock-object, method(matchers))
     .WillByDefault(action);
 ```
 
-### Setting Expectations {#ExpectCall}
+## Setting Expectations {#ExpectCall}
 
 `EXPECT_CALL()` sets **expectations** on a mock method (How will it be called?
 What will it do?):
@@ -202,6 +202,15 @@ EXPECT_CALL(mock-object, method (matchers)?)
      .RetiresOnSaturation();        ?
 ```
 
+For each item above, `?` means it can be used at most once, while `*` means it
+can be used any number of times.
+
+In order to pass, `EXPECT_CALL` must be used before the calls are actually made.
+
+The `(matchers)` is a comma-separated list of matchers that correspond to each
+of the arguments of `method`, and sets the expectation only for calls of
+`method` that matches all of the matchers.
+
 If `(matchers)` is omitted, the expectation is the same as if the matchers were
 set to anything matchers (for example, `(_, _, _, _)` for a four-arg method).
 
@@ -216,31 +225,38 @@ If `Times()` is omitted, the cardinality is assumed to be:
 A method with no `EXPECT_CALL()` is free to be invoked *any number of times*,
 and the default action will be taken each time.
 
-### Matchers {#MatcherList}
+## Matchers {#MatcherList}
 
 <!-- GOOGLETEST_CM0020 DO NOT DELETE -->
 
 A **matcher** matches a *single* argument. You can use it inside `ON_CALL()` or
-`EXPECT_CALL()`, or use it to validate a value directly:
+`EXPECT_CALL()`, or use it to validate a value directly using two macros:
 
 <!-- mdformat off(github rendering does not support multiline tables) -->
-| Matcher                              | Description                           |
+| Macro                                | Description                           |
 | :----------------------------------- | :------------------------------------ |
 | `EXPECT_THAT(actual_value, matcher)` | Asserts that `actual_value` matches `matcher`. |
 | `ASSERT_THAT(actual_value, matcher)` | The same as `EXPECT_THAT(actual_value, matcher)`, except that it generates a **fatal** failure. |
 <!-- mdformat on -->
 
-Built-in matchers (where `argument` is the function argument) are divided into
-several categories:
+**Note:** Although equality matching via `EXPECT_THAT(actual_value,
+expected_value)` is supported, prefer to make the comparison explicit via
+`EXPECT_THAT(actual_value, Eq(expected_value))` or `EXPECT_EQ(actual_value,
+expected_value)`.
 
-#### Wildcard
+Built-in matchers (where `argument` is the function argument, e.g.
+`actual_value` in the example above, or when used in the context of
+`EXPECT_CALL(mock_object, method(matchers))`, the arguments of `method`) are
+divided into several categories:
+
+### Wildcard
 
 Matcher                     | Description
 :-------------------------- | :-----------------------------------------------
 `_`                         | `argument` can be any value of the correct type.
 `A<type>()` or `An<type>()` | `argument` can be any value of type `type`.
 
-#### Generic Comparison
+### Generic Comparison
 
 <!-- mdformat off(no multiline tables) -->
 | Matcher                | Description                                         |
@@ -251,9 +267,11 @@ Matcher                     | Description
 | `Le(value)`            | `argument <= value`                                 |
 | `Lt(value)`            | `argument < value`                                  |
 | `Ne(value)`            | `argument != value`                                 |
+| `IsFalse()`            | `argument` evaluates to `false` in a Boolean context. |
+| `IsTrue()`             | `argument` evaluates to `true` in a Boolean context. |
 | `IsNull()`             | `argument` is a `NULL` pointer (raw or smart).      |
 | `NotNull()`            | `argument` is a non-null pointer (raw or smart).    |
-| `Optional(m)`          | `argument` is `optional<>` that contains a value matching `m`. |
+| `Optional(m)`          | `argument` is `optional<>` that contains a value matching `m`. (For testing whether an `optional<>` is set, check for equality with `nullopt`. You may need to use `Eq(nullopt)` if the inner type doesn't have `==`.)|
 | `VariantWith<T>(m)`    | `argument` is `variant<>` that holds the alternative of type T with a value matching `m`. |
 | `Ref(variable)`        | `argument` is a reference to `variable`.            |
 | `TypedEq<type>(value)` | `argument` has type `type` and is equal to `value`. You may need to use this instead of `Eq(value)` when the mock function is overloaded. |
@@ -261,11 +279,18 @@ Matcher                     | Description
 
 Except `Ref()`, these matchers make a *copy* of `value` in case it's modified or
 destructed later. If the compiler complains that `value` doesn't have a public
-copy constructor, try wrap it in `ByRef()`, e.g.
-`Eq(ByRef(non_copyable_value))`. If you do that, make sure `non_copyable_value`
-is not changed afterwards, or the meaning of your matcher will be changed.
+copy constructor, try wrap it in `std::ref()`, e.g.
+`Eq(std::ref(non_copyable_value))`. If you do that, make sure
+`non_copyable_value` is not changed afterwards, or the meaning of your matcher
+will be changed.
 
-#### Floating-Point Matchers {#FpMatchers}
+`IsTrue` and `IsFalse` are useful when you need to use a matcher, or for types
+that can be explicitly converted to Boolean, but are not implicitly converted to
+Boolean. In other cases, you can use the basic
+[`EXPECT_TRUE` and `EXPECT_FALSE`](../../googletest/docs/primer#basic-assertions)
+assertions.
+
+### Floating-Point Matchers {#FpMatchers}
 
 <!-- mdformat off(no multiline tables) -->
 | Matcher                          | Description                        |
@@ -274,6 +299,7 @@ is not changed afterwards, or the meaning of your matcher will be changed.
 | `FloatEq(a_float)`               | `argument` is a `float` value approximately equal to `a_float`, treating two NaNs as unequal. |
 | `NanSensitiveDoubleEq(a_double)` | `argument` is a `double` value approximately equal to `a_double`, treating two NaNs as equal. |
 | `NanSensitiveFloatEq(a_float)`   | `argument` is a `float` value approximately equal to `a_float`, treating two NaNs as equal. |
+| `IsNan()`   | `argument` is any floating-point type with a NaN value. |
 <!-- mdformat on -->
 
 The above matchers use ULP-based comparison (the same as used in googletest).
@@ -292,7 +318,7 @@ user wants.
 | `NanSensitiveFloatNear(a_float, max_abs_error)`   | `argument` is a `float` value close to `a_float` (absolute error <= `max_abs_error`), treating two NaNs as equal. |
 <!-- mdformat on -->
 
-#### String Matchers
+### String Matchers
 
 The `argument` can be either a C string or a C++ string object:
 
@@ -312,10 +338,11 @@ The `argument` can be either a C string or a C++ string object:
 
 `ContainsRegex()` and `MatchesRegex()` take ownership of the `RE` object. They
 use the regular expression syntax defined
-[here](advanced.md#regular-expression-syntax). `StrCaseEq()`, `StrCaseNe()`,
-`StrEq()`, and `StrNe()` work for wide strings as well.
+[here](../../googletest/docs/advanced.md#regular-expression-syntax). All of
+these matchers, except `ContainsRegex()` and `MatchesRegex()` work for wide
+strings as well.
 
-#### Container Matchers
+### Container Matchers
 
 Most STL-style containers support `==`, so you can use `Eq(expected_container)`
 or simply `expected_container` to match a container exactly. If you want to
@@ -332,10 +359,8 @@ messages, you can use:
 | `ElementsAre(e0, e1, ..., en)` | `argument` has `n + 1` elements, where the *i*-th element matches `ei`, which can be a value or a matcher. |
 | `ElementsAreArray({e0, e1, ..., en})`, `ElementsAreArray(a_container)`, `ElementsAreArray(begin, end)`, `ElementsAreArray(array)`, or `ElementsAreArray(array, count)` | The same as `ElementsAre()` except that the expected element values/matchers come from an initializer list, STL-style container, iterator range, or C-style array. |
 | `IsEmpty()` | `argument` is an empty container (`container.empty()`). |
-| `IsFalse()` | `argument` evaluates to `false` in a Boolean context. |
 | `IsSubsetOf({e0, e1, ..., en})`, `IsSubsetOf(a_container)`, `IsSubsetOf(begin, end)`, `IsSubsetOf(array)`, or `IsSubsetOf(array, count)` | `argument` matches `UnorderedElementsAre(x0, x1, ..., xk)` for some subset `{x0, x1, ..., xk}` of the expected matchers. |
 | `IsSupersetOf({e0, e1, ..., en})`, `IsSupersetOf(a_container)`, `IsSupersetOf(begin, end)`, `IsSupersetOf(array)`, or `IsSupersetOf(array, count)` | Some subset of `argument` matches `UnorderedElementsAre(`expected matchers`)`. |
-| `IsTrue()` | `argument` evaluates to `true` in a Boolean context. |
 | `Pointwise(m, container)`, `Pointwise(m, {e0, e1, ..., en})` | `argument` contains the same number of elements as in `container`, and for all i, (the i-th element in `argument`, the i-th element in `container`) match `m`, which is a matcher on 2-tuples. E.g. `Pointwise(Le(), upper_bounds)` verifies that each element in `argument` doesn't exceed the corresponding element in `upper_bounds`. See more detail below. |
 | `SizeIs(m)` | `argument` is a container whose size matches `m`. E.g. `SizeIs(2)` or `SizeIs(Lt(2))`. |
 | `UnorderedElementsAre(e0, e1, ..., en)` | `argument` has `n + 1` elements, and under *some* permutation of the elements, each element matches an `ei` (for a different `i`), which can be a value or a matcher. |
@@ -368,7 +393,7 @@ messages, you can use:
     EXPECT_THAT(actual_foos, Pointwise(FooEq(), expected_foos));
     ```
 
-#### Member Matchers
+### Member Matchers
 
 <!-- mdformat off(no multiline tables) -->
 | Matcher                         | Description                                |
@@ -379,7 +404,7 @@ messages, you can use:
 | `Property(&class::property, m)` | `argument.property()` (or `argument->property()` when `argument` is a plain pointer) matches matcher `m`, where `argument` is an object of type _class_. |
 <!-- mdformat on -->
 
-#### Matching the Result of a Function, Functor, or Callback
+### Matching the Result of a Function, Functor, or Callback
 
 <!-- mdformat off(no multiline tables) -->
 | Matcher          | Description                                       |
@@ -387,7 +412,7 @@ messages, you can use:
 | `ResultOf(f, m)` | `f(argument)` matches matcher `m`, where `f` is a function or functor. |
 <!-- mdformat on -->
 
-#### Pointer Matchers
+### Pointer Matchers
 
 <!-- mdformat off(no multiline tables) -->
 | Matcher                   | Description                                     |
@@ -400,7 +425,7 @@ messages, you can use:
 
 <!-- GOOGLETEST_CM0027 DO NOT DELETE -->
 
-#### Multi-argument Matchers {#MultiArgMatchers}
+### Multi-argument Matchers {#MultiArgMatchers}
 
 Technically, all matchers match a *single* value. A "multi-argument" matcher is
 just one that matches a *tuple*. The following matchers can be used to match a
@@ -425,7 +450,7 @@ reorder them) to participate in the matching:
 | `Args<N1, N2, ..., Nk>(m)` | The tuple of the `k` selected (using 0-based indices) arguments matches `m`, e.g. `Args<1, 2>(Eq())`. |
 <!-- mdformat on -->
 
-#### Composite Matchers
+### Composite Matchers
 
 You can make a matcher from one or more other matchers:
 
@@ -441,7 +466,7 @@ You can make a matcher from one or more other matchers:
 
 <!-- GOOGLETEST_CM0028 DO NOT DELETE -->
 
-#### Adapters for Matchers
+### Adapters for Matchers
 
 <!-- mdformat off(no multiline tables) -->
 | Matcher                 | Description                           |
@@ -454,7 +479,7 @@ You can make a matcher from one or more other matchers:
 `AddressSatisfies(callback)` and `Truly(callback)` take ownership of `callback`,
 which must be a permanent callback.
 
-#### Using Matchers as Predicates {#MatchersAsPredicatesCheat}
+### Using Matchers as Predicates {#MatchersAsPredicatesCheat}
 
 <!-- mdformat off(no multiline tables) -->
 | Matcher                       | Description                                 |
@@ -464,13 +489,13 @@ which must be a permanent callback.
 | `Value(value, m)` | evaluates to `true` if `value` matches `m`. |
 <!-- mdformat on -->
 
-#### Defining Matchers
+### Defining Matchers
 
 <!-- mdformat off(no multiline tables) -->
 | Matcher                              | Description                           |
 | :----------------------------------- | :------------------------------------ |
 | `MATCHER(IsEven, "") { return (arg % 2) == 0; }` | Defines a matcher `IsEven()` to match an even number. |
-| `MATCHER_P(IsDivisibleBy, n, "") { *result_listener << "where the remainder is " << (arg % n); return (arg % n) == 0; }` | Defines a macher `IsDivisibleBy(n)` to match a number divisible by `n`. |
+| `MATCHER_P(IsDivisibleBy, n, "") { *result_listener << "where the remainder is " << (arg % n); return (arg % n) == 0; }` | Defines a matcher `IsDivisibleBy(n)` to match a number divisible by `n`. |
 | `MATCHER_P2(IsBetween, a, b, std::string(negation ? "isn't" : "is") + " between " + PrintToString(a) + " and " + PrintToString(b)) { return a <= arg && arg <= b; }` | Defines a matcher `IsBetween(a, b)` to match a value in the range [`a`, `b`]. |
 <!-- mdformat on -->
 
@@ -483,26 +508,27 @@ which must be a permanent callback.
 3.  You can use `PrintToString(x)` to convert a value `x` of any type to a
     string.
 
-### Actions {#ActionList}
+## Actions {#ActionList}
 
 **Actions** specify what a mock function should do when invoked.
 
-#### Returning a Value
+### Returning a Value
 
 <!-- mdformat off(no multiline tables) -->
-|                             |                                               |
-| :-------------------------- | :-------------------------------------------- |
-| `Return()`                  | Return from a `void` mock function.           |
-| `Return(value)`             | Return `value`. If the type of `value` is     different to the mock function's return type, `value` is converted to the latter type <i>at the time the expectation is set</i>, not when the action is executed. |
-| `ReturnArg<N>()`            | Return the `N`-th (0-based) argument.         |
-| `ReturnNew<T>(a1, ..., ak)` | Return `new T(a1, ..., ak)`; a different      object is created each time. |
-| `ReturnNull()`              | Return a null pointer.                        |
-| `ReturnPointee(ptr)`        | Return the value pointed to by `ptr`.         |
-| `ReturnRef(variable)`       | Return a reference to `variable`.             |
-| `ReturnRefOfCopy(value)`    | Return a reference to a copy of `value`; the  copy lives as long as the action. |
+|                                   |                                               |
+| :-------------------------------- | :-------------------------------------------- |
+| `Return()`                        | Return from a `void` mock function.           |
+| `Return(value)`                   | Return `value`. If the type of `value` is     different to the mock function's return type, `value` is converted to the latter type <i>at the time the expectation is set</i>, not when the action is executed. |
+| `ReturnArg<N>()`                  | Return the `N`-th (0-based) argument.         |
+| `ReturnNew<T>(a1, ..., ak)`       | Return `new T(a1, ..., ak)`; a different      object is created each time. |
+| `ReturnNull()`                    | Return a null pointer.                        |
+| `ReturnPointee(ptr)`              | Return the value pointed to by `ptr`.         |
+| `ReturnRef(variable)`             | Return a reference to `variable`.             |
+| `ReturnRefOfCopy(value)`          | Return a reference to a copy of `value`; the  copy lives as long as the action. |
+| `ReturnRoundRobin({a1, ..., ak})` | Each call will return the next `ai` in the list, starting at the beginning when the end of the list is reached. |
 <!-- mdformat on -->
 
-#### Side Effects
+### Side Effects
 
 <!-- mdformat off(no multiline tables) -->
 |                                    |                                         |
@@ -519,7 +545,7 @@ which must be a permanent callback.
 | `Throw(exception)` | Throws the given exception, which can be any copyable value. Available since v1.1.0. |
 <!-- mdformat on -->
 
-#### Using a Function, Functor, or Lambda as an Action
+### Using a Function, Functor, or Lambda as an Action
 
 In the following, by "callable" we mean a free function, `std::function`,
 functor, or lambda.
@@ -561,19 +587,18 @@ callback type instead of a derived one, e.g.
 ```
 
 In `InvokeArgument<N>(...)`, if an argument needs to be passed by reference,
-wrap it inside `ByRef()`. For example,
+wrap it inside `std::ref()`. For example,
 
 ```cpp
-using ::testing::ByRef;
 using ::testing::InvokeArgument;
 ...
-InvokeArgument<2>(5, string("Hi"), ByRef(foo))
+InvokeArgument<2>(5, string("Hi"), std::ref(foo))
 ```
 
 calls the mock function's #2 argument, passing to it `5` and `string("Hi")` by
 value, and `foo` by reference.
 
-#### Default Action
+### Default Action
 
 <!-- mdformat off(no multiline tables) -->
 | Matcher       | Description                                            |
@@ -586,7 +611,7 @@ composite action - trying to do so will result in a run-time error.
 
 <!-- GOOGLETEST_CM0032 DO NOT DELETE -->
 
-#### Composite Actions
+### Composite Actions
 
 <!-- mdformat off(no multiline tables) -->
 |                                |                                             |
@@ -598,20 +623,7 @@ composite action - trying to do so will result in a run-time error.
 | `WithoutArgs(a)`               | Perform action `a` without any arguments. |
 <!-- mdformat on -->
 
-#### Defining Actions
-
-<table border="1" cellspacing="0" cellpadding="1">
-  <tr>
-    <td>`struct SumAction {` <br>
-        &emsp;`template <typename T>` <br>
-        &emsp;`T operator()(T x, Ty) { return x + y; }` <br>
-        `};`
-    </td>
-    <td> Defines a generic functor that can be used as an action summing its
-    arguments. </td> </tr>
-  <tr>
-  </tr>
-</table>
+### Defining Actions
 
 <!-- mdformat off(no multiline tables) -->
 |                                    |                                         |
@@ -623,7 +635,7 @@ composite action - trying to do so will result in a run-time error.
 
 The `ACTION*` macros cannot be used inside a function or class.
 
-### Cardinalities {#CardinalityList}
+## Cardinalities {#CardinalityList}
 
 These are used in `Times()` to specify how many times a mock function will be
 called:
@@ -638,13 +650,13 @@ called:
 | `Exactly(n) or n` | The call is expected exactly `n` times. In particular, the call should never happen when `n` is 0. |
 <!-- mdformat on -->
 
-### Expectation Order
+## Expectation Order
 
 By default, the expectations can be matched in *any* order. If some or all
 expectations must be matched in a given order, there are two ways to specify it.
 They can be used either independently or together.
 
-#### The After Clause {#AfterClause}
+### The After Clause {#AfterClause}
 
 ```cpp
 using ::testing::Expectation;
@@ -678,7 +690,7 @@ says that `Bar()` can be called only after all elements have been initialized
 Modifying an `ExpectationSet` after using it in an `.After()` doesn't affect the
 meaning of the `.After()`.
 
-#### Sequences {#UsingSequences}
+### Sequences {#UsingSequences}
 
 When you have a long chain of sequential expectations, it's easier to specify
 the order using **sequences**, which don't require you to given each expectation
@@ -721,7 +733,7 @@ using ::testing::InSequence;
 says that all expected calls in the scope of `seq` must occur in strict order.
 The name `seq` is irrelevant.
 
-### Verifying and Resetting a Mock
+## Verifying and Resetting a Mock
 
 gMock will verify the expectations on a mock object when it is destructed, or
 you can do it earlier:
@@ -730,12 +742,12 @@ you can do it earlier:
 using ::testing::Mock;
 ...
 // Verifies and removes the expectations on mock_obj;
-// returns true if successful.
+// returns true if and only if successful.
 Mock::VerifyAndClearExpectations(&mock_obj);
 ...
 // Verifies and removes the expectations on mock_obj;
 // also removes the default actions set by ON_CALL();
-// returns true if successful.
+// returns true if and only if successful.
 Mock::VerifyAndClear(&mock_obj);
 ```
 
@@ -746,7 +758,7 @@ verified:
 Mock::AllowLeak(&mock_obj);
 ```
 
-### Mock Classes
+## Mock Classes
 
 gMock defines a convenient mock class template
 
@@ -759,7 +771,7 @@ class MockFunction<R(A1, ..., An)> {
 
 See this [recipe](cook_book.md#using-check-points) for one application of it.
 
-### Flags
+## Flags
 
 <!-- mdformat off(no multiline tables) -->
 | Flag                           | Description                               |

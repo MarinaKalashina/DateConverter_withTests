@@ -126,7 +126,9 @@ include_directories(${gtest_build_include_dirs})
 # are used for other targets, to ensure that gtest can be compiled by a user
 # aggressive about warnings.
 cxx_library(gtest "${cxx_strict}" src/gtest-all.cc)
+set_target_properties(gtest PROPERTIES VERSION ${GOOGLETEST_VERSION})
 cxx_library(gtest_main "${cxx_strict}" src/gtest_main.cc)
+set_target_properties(gtest_main PROPERTIES VERSION ${GOOGLETEST_VERSION})
 # If the CMake version supports it, attach header directory information
 # to the targets for when we are part of a parent build (ie being pulled
 # in via add_subdirectory() rather than being a standalone build).
@@ -266,6 +268,7 @@ $env:Path = \"$project_bin;$env:Path\"
   cxx_executable(googletest-break-on-failure-unittest_ test gtest)
   py_test(googletest-break-on-failure-unittest)
 
+  py_test(gtest_skip_check_output_test)
   py_test(gtest_skip_environment_check_output_test)
 
   # Visual Studio .NET 2003 does not support STL with exceptions disabled.
@@ -316,6 +319,9 @@ $env:Path = \"$project_bin;$env:Path\"
 
   cxx_executable(googletest-uninitialized-test_ test gtest)
   py_test(googletest-uninitialized-test)
+
+  cxx_executable(gtest_list_output_unittest_ test gtest)
+  py_test(gtest_list_output_unittest)
 
   cxx_executable(gtest_xml_outfile1_test_ test gtest_main)
   cxx_executable(gtest_xml_outfile2_test_ test gtest_main)

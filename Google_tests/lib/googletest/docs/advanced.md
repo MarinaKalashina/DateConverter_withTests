@@ -106,7 +106,7 @@ assertion* to get the function arguments printed for free:
 | Fatal assertion                   | Nonfatal assertion                | Verifies                    |
 | --------------------------------- | --------------------------------- | --------------------------- |
 | `ASSERT_PRED1(pred1, val1)`       | `EXPECT_PRED1(pred1, val1)`       | `pred1(val1)` is true       |
-| `ASSERT_PRED2(pred2, val1, val2)` | `EXPECT_PRED2(pred2, val1, val2)` | `pred1(val1, val2)` is true |
+| `ASSERT_PRED2(pred2, val1, val2)` | `EXPECT_PRED2(pred2, val1, val2)` | `pred2(val1, val2)` is true |
 | `...`                             | `...`                             | `...`                       |
 
 <!-- mdformat on-->
@@ -401,7 +401,7 @@ alone with them. For a list of matchers gMock provides, read
 your [own matchers](../../googlemock/docs/cook_book.md#NewMatchers) too.
 
 gMock is bundled with googletest, so you don't need to add any build dependency
-in order to take advantage of this. Just include `"testing/base/public/gmock.h"`
+in order to take advantage of this. Just include `"gmock/gmock.h"`
 and you're ready to go.
 
 ### More String Assertions
@@ -464,9 +464,10 @@ You can call the function
 
 to assert that types `T1` and `T2` are the same. The function does nothing if
 the assertion is satisfied. If the types are different, the function call will
-fail to compile, and the compiler error message will likely (depending on the
-compiler) show you the actual values of `T1` and `T2`. This is mainly useful
-inside template code.
+fail to compile, the compiler error message will say that
+`T1 and T2 are not the same type` and most likely (depending on the compiler)
+show you the actual values of `T1` and `T2`. This is mainly useful inside
+template code.
 
 **Caveat**: When used inside a member function of a class template or a function
 template, `StaticAssertTypeEq<T1, T2>()` is effective only if the function is
@@ -637,11 +638,12 @@ Fatal assertion                                  | Nonfatal assertion           
 ------------------------------------------------ | ------------------------------------------------ | --------
 `ASSERT_DEATH(statement, matcher);`              | `EXPECT_DEATH(statement, matcher);`              | `statement` crashes with the given error
 `ASSERT_DEATH_IF_SUPPORTED(statement, matcher);` | `EXPECT_DEATH_IF_SUPPORTED(statement, matcher);` | if death tests are supported, verifies that `statement` crashes with the given error; otherwise verifies nothing
+`ASSERT_DEBUG_DEATH(statement, matcher);`        | `EXPECT_DEBUG_DEATH(statement, matcher);`        | `statement` crashes with the given error **in debug mode**. When not in debug (i.e. `NDEBUG` is defined), this just executes `statement`
 `ASSERT_EXIT(statement, predicate, matcher);`    | `EXPECT_EXIT(statement, predicate, matcher);`    | `statement` exits with the given error, and its exit code matches `predicate`
 
 where `statement` is a statement that is expected to cause the process to die,
 `predicate` is a function or function object that evaluates an integer exit
-status, and `matcher` is either a GMock matcher matching a `const std::string&`
+status, and `matcher` is either a gMock matcher matching a `const std::string&`
 or a (Perl) regular expression - either of which is matched against the stderr
 output of `statement`. For legacy reasons, a bare string (i.e. with no matcher)
 is interpreted as `ContainsRegex(str)`, **not** `Eq(str)`. Note that `statement`
@@ -656,7 +658,7 @@ As usual, the `ASSERT` variants abort the current test function, while the
 > has called `exit()` or `_exit()` with a non-zero value, or it may be killed by
 > a signal.
 >
-> This means that if `*statement*` terminates the process with a 0 exit code, it
+> This means that if *`statement`* terminates the process with a 0 exit code, it
 > is *not* considered a crash by `EXPECT_DEATH`. Use `EXPECT_EXIT` instead if
 > this is the case, or if you want to restrict the exit code more precisely.
 
@@ -686,7 +688,7 @@ Note that a death test only cares about three things:
 2.  (in the case of `ASSERT_EXIT` and `EXPECT_EXIT`) does the exit status
     satisfy `predicate`? Or (in the case of `ASSERT_DEATH` and `EXPECT_DEATH`)
     is the exit status non-zero? And
-3.  does the stderr output match `regex`?
+3.  does the stderr output match `matcher`?
 
 In particular, if `statement` generates an `ASSERT_*` or `EXPECT_*` failure, it
 will **not** cause the death test to fail, as googletest assertions don't abort
@@ -861,7 +863,7 @@ restored afterwards, so you need not do that yourself. For example:
 
 ```c++
 int main(int argc, char** argv) {
-  InitGoogle(argv[0], &argc, &argv, true);
+  ::testing::InitGoogleTest(&argc, argv);
   ::testing::FLAGS_gtest_death_test_style = "fast";
   return RUN_ALL_TESTS();
 }
@@ -917,6 +919,8 @@ the `SCOPED_TRACE` macro or the `ScopedTrace` utility:
 
 ```c++
 SCOPED_TRACE(message);
+```
+```c++
 ScopedTrace trace("file_path", line_number, message);
 ```
 
@@ -952,7 +956,7 @@ path/to/foo_test.cc:11: Failure
 Value of: Bar(n)
 Expected: 1
   Actual: 2
-   Trace:
+Google Test trace:
 path/to/foo_test.cc:17: A
 
 path/to/foo_test.cc:12: Failure
@@ -1002,7 +1006,7 @@ TEST(FooTest, Bar) {
                  // in Subroutine() to abort the entire test.
 
   // The actual behavior: the function goes on after Subroutine() returns.
-  int* p = NULL;
+  int* p = nullptr;
   *p = 3;  // Segfault!
 }
 ```
@@ -1131,7 +1135,7 @@ will output XML like this:
 > *   `RecordProperty()` is a static member of the `Test` class. Therefore it
 >     needs to be prefixed with `::testing::Test::` if used outside of the
 >     `TEST` body and the test fixture class.
-> *   `*key*` must be a valid XML attribute name, and cannot conflict with the
+> *   *`key`* must be a valid XML attribute name, and cannot conflict with the
 >     ones already used by googletest (`name`, `status`, `time`, `classname`,
 >     `type_param`, and `value_param`).
 > *   Calling `RecordProperty()` outside of the lifespan of a test is allowed.
@@ -1189,7 +1193,7 @@ class FooTest : public ::testing::Test {
   // Can be omitted if not needed.
   static void TearDownTestSuite() {
     delete shared_resource_;
-    shared_resource_ = NULL;
+    shared_resource_ = nullptr;
   }
 
   // You can define per-test set-up logic as usual.
@@ -1202,7 +1206,7 @@ class FooTest : public ::testing::Test {
   static T* shared_resource_;
 };
 
-T* FooTest::shared_resource_ = NULL;
+T* FooTest::shared_resource_ = nullptr;
 
 TEST_F(FooTest, Test1) {
   ... you can refer to shared_resource_ here ...
@@ -1228,7 +1232,7 @@ environment, which knows how to set-up and tear-down:
 ```c++
 class Environment : public ::testing::Environment {
  public:
-  virtual ~Environment() {}
+  ~Environment() override {}
 
   // Override this to define how to set up the environment.
   void SetUp() override {}
@@ -1371,8 +1375,15 @@ INSTANTIATE_TEST_SUITE_P(InstantiationName,
 NOTE: The code above must be placed at global or namespace scope, not at
 function scope.
 
-NOTE: Don't forget this step! If you do your test will silently pass, but none
-of its suites will ever run!
+Per default, every `TEST_P` without a corresponding `INSTANTIATE_TEST_SUITE_P`
+causes a failing test in test suite `GoogleTestVerification`. If you have a test
+suite where that omission is not an error, for example it is in a library that
+may be linked in for other reason or where the list of test cases is dynamic and
+may be empty, then this check can be suppressed by tagging the test suite:
+
+```c++
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(FooTest);
+```
 
 To distinguish different instances of the pattern (yes, you can instantiate it
 more than once), the first argument to `INSTANTIATE_TEST_SUITE_P` is a prefix
@@ -1475,7 +1486,7 @@ for conciseness:
 ```c++
 enum class MyType { MY_FOO = 0, MY_BAR = 1 };
 
-class MyTestSuite : public testing::TestWithParam<std::tuple<MyType, string>> {
+class MyTestSuite : public testing::TestWithParam<std::tuple<MyType, std::string>> {
 };
 
 INSTANTIATE_TEST_SUITE_P(
@@ -1484,7 +1495,7 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(MyType::VALUE_0, MyType::VALUE_1),
         testing::ValuesIn("", "")),
     [](const testing::TestParamInfo<MyTestSuite::ParamType>& info) {
-      string name = absl::StrCat(
+      std::string name = absl::StrCat(
           std::get<0>(info.param) == MY_FOO ? "Foo" : "Bar", "_",
           std::get<1>(info.param));
       absl::c_replace_if(name, [](char c) { return !std::isalnum(c); }, '_');
@@ -1761,7 +1772,7 @@ In frameworks that report a failure by throwing an exception, you could catch
 the exception and assert on it. But googletest doesn't use exceptions, so how do
 we test that a piece of code generates an expected failure?
 
-gunit-spi.h contains some constructs to do this. After #including this header,
+`"gtest/gtest-spi.h"` contains some constructs to do this. After #including this header,
 you can use
 
 ```c++
@@ -1802,7 +1813,7 @@ For technical reasons, there are some caveats:
 ## Registering tests programmatically
 
 The `TEST` macros handle the vast majority of all use cases, but there are few
-were runtime registration logic is required. For those cases, the framework
+where runtime registration logic is required. For those cases, the framework
 provides the `::testing::RegisterTest` that allows callers to register arbitrary
 tests dynamically.
 
@@ -1903,16 +1914,14 @@ To obtain a `TestInfo` object for the currently running test, call
   const ::testing::TestInfo* const test_info =
     ::testing::UnitTest::GetInstance()->current_test_info();
 
-
-
   printf("We are in test %s of test suite %s.\n",
          test_info->name(),
          test_info->test_suite_name());
 ```
 
 `current_test_info()` returns a null pointer if no test is running. In
-particular, you cannot find the test suite name in `TestSuiteSetUp()`,
-`TestSuiteTearDown()` (where you know the test suite name implicitly), or
+particular, you cannot find the test suite name in `SetUpTestSuite()`,
+`TearDownTestSuite()` (where you know the test suite name implicitly), or
 functions called from them.
 
 ## Extending googletest by Handling Test Events
@@ -2103,6 +2112,15 @@ For example:
     everything in test suite `FooTest` except `FooTest.Bar` and everything in
     test suite `BarTest` except `BarTest.Foo`.
 
+#### Stop test execution upon first failure
+
+By default, a googletest program runs all tests the user has defined. In some
+cases (e.g. iterative test development & execution) it may be desirable stop
+test execution upon first failure (trading improved latency for completeness).
+If `GTEST_FAIL_FAST` environment variable or `--gtest_fail_fast` flag is set,
+the test runner will stop execution as soon as the first test failure is
+found.
+
 #### Temporarily Disabling Tests
 
 If you have a broken test that you cannot fix right away, you can add the
@@ -2239,6 +2257,12 @@ disable colors, or let googletest decide. When the value is `auto`, googletest
 will use colors if and only if the output goes to a terminal and (on non-Windows
 platforms) the `TERM` environment variable is set to `xterm` or `xterm-color`.
 
+#### Suppressing test passes
+
+By default, googletest prints 1 line of output for each test, indicating if it
+passed or failed. To show only test failures, run the test program with
+`--gtest_brief=1`, or set the GTEST_BRIEF environment variable to `1`.
+
 #### Suppressing the Elapsed Time
 
 By default, googletest prints the time it takes to run each test. To disable
@@ -2260,8 +2284,7 @@ environment variable to `0`.
 
 googletest can emit a detailed XML report to a file in addition to its normal
 textual output. The report contains the duration of each test, and thus can help
-you identify slow tests. The report is also used by the http://unittest
-dashboard to show per-test-method error messages.
+you identify slow tests.
 
 To generate the XML report, set the `GTEST_OUTPUT` environment variable or the
 `--gtest_output` flag to the string `"xml:path_to_output_file"`, which will
@@ -2539,6 +2562,18 @@ could generate this report:
 IMPORTANT: The exact format of the JSON document is subject to change.
 
 ### Controlling How Failures Are Reported
+
+#### Detecting Test Premature Exit
+
+Google Test implements the _premature-exit-file_ protocol for test runners
+to catch any kind of unexpected exits of test programs. Upon start,
+Google Test creates the file which will be automatically deleted after
+all work has been finished. Then, the test runner can check if this file
+exists. In case the file remains undeleted, the inspected test has exited
+prematurely.
+
+This feature is enabled only if the `TEST_PREMATURE_EXIT_FILE` environment
+variable has been set.
 
 #### Turning Assertion Failures into Break-Points
 
