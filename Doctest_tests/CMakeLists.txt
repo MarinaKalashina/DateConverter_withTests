@@ -1,0 +1,2 @@
+add_executable(Doctest_tests_run ConverterTests.cpp AbsoluteDateTest.cpp)
+target_link_libraries(Doctest_tests_run DateConverter_lib)
