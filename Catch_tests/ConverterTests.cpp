@@ -1,9 +1,7 @@
-// #define CATCH_CONFIG_MAIN - don't need to repeat this include in more than one cpp file
-#include "catch.hpp"
 #include "Gregorian.h"
 #include "Julian.h"
 
-
+#include <catch2/catch_test_macros.hpp>
 
 TEST_CASE( "Check various dates", "[DateConverterTests]" ) {
 

@@ -1,7 +1,7 @@
 # Note: CMake support is community-based. The maintainers do not use CMake
 # internally.
 
-cmake_minimum_required(VERSION 2.8.8)
+cmake_minimum_required(VERSION 3.20)
 
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 

@@ -1,5 +1,5 @@
-#define CATCH_CONFIG_MAIN
-#include "catch.hpp"
+#include <catch2/catch_test_macros.hpp>
+
 #include "Gregorian.h"
 
 TEST_CASE("ExampleDate", "[AbsoluteDateTests]"){  // 12/2/2020 -> 737761
